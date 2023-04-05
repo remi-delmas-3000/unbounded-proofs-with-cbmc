@@ -559,4 +559,49 @@ SET_CHECK_ASSIGNMENT_LOOP:
   return incl;
 #pragma CPROVER check pop
 }
+
+/// \brief Checks the inclusion of the \p candidate->contract_assigns elements
+/// in \p reference->contract_assigns or \p reference->allocated.
+///
+/// \pre \p candidate->allocated must be empty.
+///
+/// \param[in] reference Reference write set from a caller
+/// \param[in] candidate Candidate write set from a contract being replaced
+/// \return True iff all elements of \p candidate->contract_assigns are included
+/// in some element of \p reference->contract_assigns or \p reference->allocated
+__CPROVER_bool __CPROVER_contracts_write_set_check_assigns_clause_inclusion(
+  __CPROVER_contracts_write_set_ptr_t reference,
+  __CPROVER_contracts_write_set_ptr_t candidate)
+{
+__CPROVER_HIDE:;
+  __CPROVER_bool incl = 1;
+  __CPROVER_contracts_car_t *current = candidate->contract_assigns.elems;
+  __CPROVER_size_t idx = candidate->contract_assigns.max_elems;
+SET_CHECK_ASSIGNS_CLAUSE_INCLUSION_LOOP:
+  while(idx != 0)
+  {
+    if(current->is_writable)
+    {
+      incl &= __CPROVER_contracts_write_set_check_assignment(
+        reference, current->lb, current->size);
+    }
+    --idx;
+    ++current;
+  }
+  return incl;
+}
+
+/// \brief Returns the start address of the conditional address range found at
+/// index \p idx in  \p set->contract_assigns.
+void *__CPROVER_contracts_write_set_havoc_get_assignable_target(
+  __CPROVER_contracts_write_set_ptr_t set,
+  __CPROVER_size_t idx)
+{
+__CPROVER_HIDE:;
+  __CPROVER_contracts_car_t car = set->contract_assigns.elems[idx];
+  if(car.is_writable)
+    return car.lb;
+  else
+    return (void *)0;
+}
 #endif // __CPROVER_write_set_defined
