@@ -1,5 +1,5 @@
-#ifndef __CPROVER_pointer_predicates_defined
-#define __CPROVER_pointer_predicates_defined
+#ifndef POINTER_PREDICATES_H_INCLUDED
+#define POINTER_PREDICATES_H_INCLUDED
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -201,4 +201,4 @@ bool __assignable_int(int *ptr, __CPROVER_context_t *ctx,
   return result;
 }
 
-#endif //__CPROVER_pointer_predicates_defined
+#endif //POINTER_PREDICATES_H_INCLUDED
