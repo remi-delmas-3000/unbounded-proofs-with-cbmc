@@ -24,18 +24,18 @@ bool nondet_bool();
 int nondet_int();
 
 int original() {
-  list_t *p = NULL;
-  list_t *list = malloc(sizeof(list_t));;
-  list_t *tail = list;
+  list_t *list = malloc(sizeof(list_t)); // AO_0 = {1}
   *list = (list_t){.next = NULL, .val = 10};
 
   // builds list->p_1-> ... ->p_n->NULL
+  list_t *tail = list;
+  list_t *p = NULL;
   while (nondet_bool()) {
     int x = nondet_int();
     if (!(10 <= x && x <= 20)) {
       goto LOOP_END; // continue
     }
-    p = malloc(sizeof(list_t)); // AO_1
+    p = malloc(sizeof(list_t)); // AO_1 = {2, 3, ...., N}
     *p = (list_t){.next = NULL, .val = x};
     tail->next = p;
     tail = p;
@@ -242,7 +242,7 @@ int abstraction() {
     // empty
     //--- points-to:
     // p ~ AO_1
-    // p->next ~ invalid, NULL
+    // p->next ~ invalid
     // list ~ AO_0
     // list->next ~ NULL, AO_1
     // tail ~ AO_0, AO_1
@@ -412,7 +412,7 @@ int loop_elimination() {
     p = (nondet_bool() ? NULL : AO_1);
 
     // tail ~ AO_0, AO_1
-    tail = (nondet_bool() ? &obj_0 : AO_1);
+    tail = (nondet_bool() ? AO_0 : AO_1);
   }
 
   // loop step
@@ -424,6 +424,7 @@ int loop_elimination() {
     p = AO_1;
     {
       // the object comes out uninitialised
+      __CPROVER_assume(p != tail);
       list_t nondet;
       *p = nondet;
     }
@@ -440,14 +441,15 @@ int loop_elimination() {
            tail == &obj_1_3 || tail == &obj_1_4);
     __CPROVER_assume(false);
   }
+    // assume p ~ NULL, AO_1
+    // assume tail ~ AO_0, AO_1
 
   p = list;
 
   if (nondet_bool()) {
     // loopback update
     // p ~ NULL, AO_0, AO_1
-    list_t *p_lb = (nondet_bool() ? NULL : (nondet_bool() ? AO_0 : AO_1));
-    p = p_lb;
+    p = (nondet_bool() ? NULL : (nondet_bool() ? AO_0 : AO_1));
   }
 
   if (p != NULL) {
@@ -589,10 +591,8 @@ int lemma_inference() {
   if (nondet_bool()) {
     // loopback update
     // p ~ NULL, AO_0, AO_1
-    list_t *p_lb = (nondet_bool() ? NULL : (nondet_bool() ? AO_0 : AO_1));
-    p = p_lb;
+    p = (nondet_bool() ? NULL : (nondet_bool() ? AO_0 : AO_1));
   }
-
 
   if (p != NULL) {
     assert((10 <= p->val && p->val <= 20));
