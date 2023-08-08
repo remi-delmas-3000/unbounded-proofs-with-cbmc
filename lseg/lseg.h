@@ -6,6 +6,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+// // fresh1 -> y
+// // fresh1 -> fresh2 -> ... -> y
+// bool lseg(x, y) {
+//   is_fresh(x) && (equals(x->next, y) || lseg(x->next, y));
+// }
+
 // assumption
 typedef struct __lseg_s {
   list_t *x;
@@ -51,8 +57,6 @@ bool __assume_lseg(list_t *x, list_t *y) {
 // the user-defined predicate is rewritten to operate on a bounded lookahead
 // and be assume/assert context sensitive
 bool __lseg(list_t **x, list_t *y, __CPROVER_context_t *ctx, size_t lookahead) {
-  // assert(y == NULL || __CPROVER_r_ok(y, 0));
-
   // fail
   if (lookahead == 0) {
     __CPROVER_assert(false,
@@ -86,17 +90,18 @@ bool __lseg(list_t **x, list_t *y, __CPROVER_context_t *ctx, size_t lookahead) {
 // }
 // the user-defined predicate is rewritten to operate on a bounded lookahead
 // and be assume/assert context sensitive
-bool __lseg2(list_t **x, list_t **y, __CPROVER_context_t *ctx,
-             size_t lookahead) {
-  return (__pointer_equals((void **)y, NULL, ctx) ||
-          __is_fresh((void **)y, sizeof(list_t), ctx)) &&
-         __lseg(y, y, ctx, lookahead);
-}
+// bool __lseg2(list_t **x, list_t **y, __CPROVER_context_t *ctx,
+//              size_t lookahead) {
+//   return (__pointer_equals((void **)y, NULL, ctx) ||
+//           __is_fresh((void **)y, sizeof(list_t), ctx)) &&
+//          __lseg(y, y, ctx, lookahead);
+// }
 
 // lemma function
 // requires z == null || fresh(z)
 // requires lseg(y, z)
 // requires lseg(x, y)
+// requires z == null || fresh(z)
 // ensures lseg(x, z)
 void lseg_lemma(list_t *x, list_t *y, list_t *z);
 
@@ -140,6 +145,7 @@ void use_lseg_lemma(list_t *x, list_t *y, list_t *z, size_t lh_pre,
 void lseg_lemma(list_t *x, list_t *y, list_t *z) {
   if (!__lseg_lemma_on_stack) {
     {
+      // assume preconditions
       size_t lh = 2;
       __CPROVER_context_t *ctx = __CPROVER_context_new(true);
 
@@ -149,7 +155,7 @@ void lseg_lemma(list_t *x, list_t *y, list_t *z) {
 
       // unwind lseg(y, z)
       // y = [fresh1]->z
-      // y = [fresh1]->opaque0 with lseg_assumed(opaque0, y)
+      // y = [fresh1]->opaque0 with lseg_assumed(opaque0, z)
       __CPROVER_assume(__lseg(&y, z, ctx, lh));
 
       // unwind lseg(x, y)
