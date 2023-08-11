@@ -1,111 +1,113 @@
 /* list append verification using the abstract objects program transformation */
 #include "list.h"
-#include "../pointer_predicates.h"
-#include "lseg.h"
+// #include "../pointer_predicates.h"
+// #include "lseg.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
-// The semantics of lseg(x, A, y) is given in terms of abstract objects and
+/*
+// The semantics of lseg(x, y) is given in terms of abstract objects and
 // points-to sets
-// PT(x) = {&A}
-// PT(A.next) = {&A} union PT(y)
+// Abstract objects X, Y
+// PT(x) = {&X}
+// PT(X.next) = {&X, &Y}
 
-// PT(x) = {&A1};
-// PT(x->next) = {&A1, null}
-// PT(y) = {&A2};
+// preconditions lseg(x, null) and lseg(y, null) generate X and Y and the
+// following points to sets
+// PT(x) = {&X};
+// PT(x->next) = {&X, null}
+// PT(y) = {&Y};
 // PT(tail) = {}
 // PT(tail->next) = {}
 // PT(old_x) = {}
 // PT(old_tail) = {}
-// PT(A1.next) = {&A1, null};
-// PT(A2.next) = {&A2, null};
-// conditional assigns clause
-// (A1.next == NULL): A1.next
+// PT(X.next) = {&X, null};
+// PT(Y.next) = {&Y, null};
 
-void list_append_base(list_t *x,list_t *y)
+void list_append_orig(list_t *x,list_t *y)
 // requires lseg(x, null)
 // requires lseg(y, null)
 // ensures lseg(y, null)
 // ensures lseg(x, y)
 {
-  // PT(x) = {&A1}
-  // PT(x->next) = {&A1, null}
-  // PT(y) = {&A2}
+  // PT(x) = {&X}
+  // PT(x->next) = {&X, null}
+  // PT(y) = {&Y}
   // PT(tail) = {}
   // PT(tail->next) = {}
   // PT(old_x) = {}
   // PT(old_tail) = {}
-  // PT(A1.next) = {&A1, null}
-  // PT(A2.next) = {&A2, null}
-  // |A1| = 3
-  // |A2| = 2
+  // PT(X.next) = {&X, null}
+  // PT(Y.next) = {&Y, null}
+  // |X| = 3
+  // |Y| = 2
   if (x->next == NULL) {
-    // PT(x) = {&A1}
+    // PT(x) = {&X}
     // PT(x->next) = {null}
-    // PT(y) = {&A2}
+    // PT(y) = {&Y}
     // PT(tail) = {}
     // PT(tail->next) = {}
     // PT(old_x) = {}
     // PT(old_tail) = {}
-    // PT(A1.next) = {null}
-    // PT(A2.next) = {&A2, null}
-    // |A1| = 1
-    // |A2| = 2
+    // PT(X.next) = {null}
+    // PT(Y.next) = {&Y, null}
+    // |X| = 1
+    // |Y| = 2
     x->next = y;
-    // PT(x) = {&A1}
-    // PT(x->next) = {&A2}
-    // PT(y) = {&A2}
+    // PT(x) = {&X}
+    // PT(x->next) = {&Y}
+    // PT(y) = {&Y}
     // PT(tail) = {}
     // PT(tail->next) = {}
     // PT(old_x) = {}
     // PT(old_tail) = {}
-    // PT(A1.next) = {&A2}
-    // PT(A2.next) = {&A2, null}
-    // |A1| = 1
-    // |A2| = 4
+    // PT(X.next) = {&Y}
+    // PT(Y.next) = {&Y, null}
+    // |X| = 1
+    // |Y| = 4
     return;
   }
-  // PT(x) = {&A1}
-  // PT(x->next) = {&A1}
-  // PT(y) = {&A2}
+  // PT(x) = {&X}
+  // PT(x->next) = {&X}
+  // PT(y) = {&Y}
   // PT(tail) = {}
   // PT(tail->next) = {}
   // PT(old_x) = {}
   // PT(old_tail) = {}
-  // PT(A1.next) = {&A1};
-  // PT(A2.next) = {&A2, null};
-  // |A1| = 3
-  // |A2| = 2
+  // PT(X.next) = {&X};
+  // PT(Y.next) = {&Y, null};
+  // |X| = 3
+  // |Y| = 2
 
   list_t *tail = x->next;
   list_t *old_x = x;
 
-  // PT(x) = {&A1}
-  // PT(x->next) = {&A1}
-  // PT(y) = {&A2}
-  // PT(tail) = {&A1}
-  // PT(tail->next) = {&A1, null}
-  // PT(old_x) = {&A1}
+  // PT(x) = {&X}
+  // PT(x->next) = {&X}
+  // PT(y) = {&Y}
+  // PT(tail) = {&X}
+  // PT(tail->next) = {&X, null}
+  // PT(old_x) = {&X}
   // PT(old_tail) = {}
-  // PT(A1.next) = {&A1};
-  // PT(A2.next) = {&A2, null};
-  // |A1| = 6
-  // |A2| = 2
+  // PT(X.next) = {&X};
+  // PT(Y.next) = {&Y, null};
+  // |X| = 6
+  // |Y| = 2
 
   while (tail->next != NULL)
   // fixpoint
-  // PT(x) = {&A1}
-  // PT(x->next) = {&A1}
-  // PT(y) = {&A2}
-  // PT(tail) = {&A1}
-  // PT(tail->next) = {&A1}
-  // PT(old_x) = {&A1}
-  // PT(old_tail) = {&A1}
-  // PT(A1.next) = {&A1};
-  // PT(A2.next) = {&A2, null};
-  // |A1| = 7
-  // |A2| = 2
+  // PT(x) = {&X}
+  // PT(x->next) = {&X}
+  // PT(y) = {&Y}
+  // PT(tail) = {&X}
+  // PT(tail->next) = {&X}
+  // PT(old_x) = {&X}
+  // PT(old_tail) = {&X}
+  // PT(X.next) = {&X};
+  // PT(Y.next) = {&Y, null};
+  // |X| = 7
+  // |Y| = 2
 
   // assigns tail
   // loop invariant lseg(x, tail) && lseg(tail, NULL)
@@ -114,81 +116,82 @@ void list_append_base(list_t *x,list_t *y)
     list_t *old_tail = tail;
     tail = tail->next;
     // fixpoint
-    // PT(x) = {&A1}
-    // PT(x->next) = {&A1}
-    // PT(y) = {&A2}
-    // PT(tail) = {&A1}
-    // PT(tail->next) = {&A1, null}
-    // PT(old_x) = {&A1}
-    // PT(old_tail) = {&A1}
-    // PT(A1.next) = {&A1};
-    // PT(A2.next) = {&A2, null};
-    // |A1| = 7
-    // |A2| = 2
+    // PT(x) = {&X}
+    // PT(x->next) = {&X}
+    // PT(y) = {&Y}
+    // PT(tail) = {&X}
+    // PT(tail->next) = {&X, null}
+    // PT(old_x) = {&X}
+    // PT(old_tail) = {&X}
+    // PT(X.next) = {&X};
+    // PT(Y.next) = {&Y, null};
+    // |X| = 7
+    // |Y| = 2
   }
   // post loop
-  // PT(x) = {&A1}
-  // PT(x->next) = {&A1}
-  // PT(y) = {&A2}
-  // PT(tail) = {&A1}
+  // PT(x) = {&X}
+  // PT(x->next) = {&X}
+  // PT(y) = {&Y}
+  // PT(tail) = {&X}
   // PT(tail->next) = {null}
-  // PT(old_x) = {&A1}
-  // PT(old_tail) = {&A1}
-  // PT(A1.next) = {&A1};
-  // PT(A2.next) = {&A2, null};
-  // |A1| = 6
-  // |A2| = 2
+  // PT(old_x) = {&X}
+  // PT(old_tail) = {&X}
+  // PT(X.next) = {&X};
+  // PT(Y.next) = {&Y, null};
+  // |X| = 6
+  // |Y| = 2
   tail->next = y;
-  // PT(x) = {&A1}
-  // PT(x->next) = {&A1}
-  // PT(y) = {&A2}
-  // PT(tail) = {&A1}
-  // PT(tail->next) = {&A2}
-  // PT(old_x) = {&A1}
-  // PT(old_tail) = {&A1}
-  // PT(A1.next) = {&A1};
-  // PT(A2.next) = {&A2, null};
-  // |A1| = 6
-  // |A2| = 2
+  // PT(x) = {&X}
+  // PT(x->next) = {&X}
+  // PT(y) = {&Y}
+  // PT(tail) = {&X}
+  // PT(tail->next) = {&Y}
+  // PT(old_x) = {&X}
+  // PT(old_tail) = {&X}
+  // PT(X.next) = {&X};
+  // PT(Y.next) = {&Y, null};
+  // |X| = 6
+  // |Y| = 2
   assert(x == old_x); // must pass
   assert(x != old_x); // must fail
 }
+*/
 
+// concretisation of X
+list_t x1;
+list_t x2;
+list_t x3;
+list_t x4;
+list_t x5;
+list_t x6;
+list_t x7;
+#define SIZE_X 7
+#define SEL_X                                                                 \
+  (nondet_bool()   ? &x1                                                      \
+   : nondet_bool() ? &x2                                                      \
+   : nondet_bool() ? &x3                                                      \
+   : nondet_bool() ? &x4                                                      \
+   : nondet_bool() ? &x5                                                      \
+   : nondet_bool() ? &x6                                                      \
+                   : &x7)
+#define INC_X(X)                                                              \
+  ((X == &x1) || (X == &x2) || (X == &x3) || (X == &x4) || (X == &x5) ||  \
+   (X == &x6) || (X == &x7))
 
-// concretisation of A1
-list_t a11;
-list_t a12;
-list_t a13;
-list_t a14;
-list_t a15;
-list_t a16;
-list_t a17;
-#define SIZE_A1 7
-#define SEL_A1                                                                 \
-  (nondet_bool()   ? &a11                                                      \
-   : nondet_bool() ? &a12                                                      \
-   : nondet_bool() ? &a13                                                      \
-   : nondet_bool() ? &a14                                                      \
-   : nondet_bool() ? &a15                                                      \
-   : nondet_bool() ? &a16                                                      \
-                   : &a17)
-#define INC_A1(X)                                                              \
-  ((X == &a11) || (X == &a12) || (X == &a13) || (X == &a14) || (X == &a15) ||  \
-   (X == &a16) || (X == &a17))
-
-// concretisation of A2
-list_t a21;
-list_t a22;
-list_t a23;
-list_t a24;
-#define SIZE_A2 4
-#define SEL_A2                                                                 \
-  (nondet_bool() ? &a21 : nondet_bool() ? &a22 : nondet_bool() ? &a23 : &a24)
-#define INC_A2(X) ((X == &a21) || (X == &a22) || (X == &a23) || (X == &a24))
+// concretisation of Y
+list_t y1;
+list_t y2;
+list_t y3;
+list_t y4;
+#define SIZE_Y 4
+#define SEL_Y                                                                 \
+  (nondet_bool() ? &y1 : nondet_bool() ? &y2 : nondet_bool() ? &y3 : &y4)
+#define INC_Y(X) ((X == &y1) || (X == &y2) || (X == &y3) || (X == &y4))
 
 
 // transformed program
 void list_append(list_t *x, list_t *y) {
+
   if (x->next == NULL) {
     x->next = y;
     return;
@@ -197,101 +200,66 @@ void list_append(list_t *x, list_t *y) {
   list_t *tail = x->next;
   list_t *old_x = x;
 
-  // check base case lseg(tail, A1, null)
+  // check base case lseg(tail, null)
   {
-    list_t *current = tail;
-    size_t i = 0;
-    bool ok = true;
-    while(i < SIZE_A1) {
-      if(current == NULL) {
-        break;
-      }
-      if(!INC_A1(current)) {
-        ok = false;
-        break;
-      }
-      current = current->next;
-      i++;
-    }
-    assert(ok);
+    // lseg(tail, null)
+    assert(INC_X(tail));
+    assert(INC_X(tail->next) || tail->next == NULL);
+    // vacuity check
+    __CPROVER_assert(tail->next != NULL, "FAILURE");
   }
 
-  // check base case lseg(x, A1, tail)
+  // check base case lseg(x, tail)
   {
-    list_t *current = x;
-    size_t i = 0;
-    bool ok = true;
-    while(i < SIZE_A1) {
-      if(current == tail) {
-        break;
-      }
-      if(!INC_A1(current)) {
-        ok = false;
-        break;
-      }
-      current = current->next;
-      i++;
-    }
-    assert(ok);
+    assert(INC_X(x));
+    assert(INC_X(tail));
+    assert(INC_X(x->next) || x->next == tail);
+    // vacuity check
+    __CPROVER_assert(x->next != tail, "FAILURE");
   }
 
   // loopback tail
-  tail = nondet_bool() ? SEL_A1 : tail;
+  tail = nondet_bool() ? SEL_X : tail;
 
-  // assume step case lseg(tail, A1, null)
+  // assume step case lseg(tail, null)
   {
-    list_t *current = tail;
-    size_t i = 0;
-    bool ok = true;
-    while(i < SIZE_A1) {
-      if(current == NULL) {
-        break;
-      }
-      if(!INC_A1(current)) {
-        ok = false;
-        break;
-      }
-      current = current->next;
-      i++;
-    }
-    __CPROVER_assume(ok);
+    __CPROVER_assume(INC_X(tail->next) ||  tail->next == NULL);
+    // vacuity check
+    __CPROVER_assert(tail->next != NULL, "FAILURE");
   }
 
-  // assume step case lseg(x, A1, tail)
+  // assume step case lseg(x, tail)
   {
-    list_t *current = x;
-    size_t i = 0;
-    bool ok = true;
-    while(i < SIZE_A1) {
-      if(current == tail) {
-        break;
-      }
-      if(!INC_A1(current)) {
-        ok = false;
-        break;
-      }
-      current = current->next;
-      i++;
-    }
-    __CPROVER_assume(ok);
+    __CPROVER_assume(INC_X(x));
+    __CPROVER_assume(INC_X(x->next) || x->next == tail);
+    // vacuity check
+    __CPROVER_assert(x->next != tail, "FAILURE");
   }
-
+  // now [x]-> X ->[tail]-> X -> null
   // loop step
   if (tail->next != NULL)
   {
     list_t *old_tail = tail;
     tail = tail->next;
-    assert(INC_A1(tail));
+    // loop invariant
+    assert(INC_X(tail));
+    assert(INC_X(tail->next) || tail->next == NULL);
+    assert(INC_X(x));
+    assert(INC_X(x->next) || x->next == tail);
+    // vacuity check
+    __CPROVER_assert(tail->next != NULL, "FAILURE");
+    __CPROVER_assert(x->next != tail, "FAILURE");
     __CPROVER_assume(false);
   }
-
+  assert(tail->next == NULL);
   assert(x == old_x); // must pass
-  assert(x != old_x); // must fail
+  __CPROVER_assert(x != old_x, "FAILURE");
 
-  #ifndef BUG1
+  #if 0
   tail->next = y;
   #endif
-  #ifdef BUG2
+
+  #if BUG2
   y->next = x;
   #endif
 }
@@ -299,64 +267,39 @@ void list_append(list_t *x, list_t *y) {
 int main() {
 
   // build first list
-  list_t *x = SEL_A1;
+  list_t *x = SEL_X;
   {
-    a11.next = nondet_bool() ? SEL_A1 : NULL;
-    a13.next = nondet_bool() ? SEL_A1 : NULL;
-    a13.next = nondet_bool() ? SEL_A1 : NULL;
-    a14.next = nondet_bool() ? SEL_A1 : NULL;
-    a15.next = nondet_bool() ? SEL_A1 : NULL;
-    a16.next = nondet_bool() ? SEL_A1 : NULL;
-    a17.next = nondet_bool() ? SEL_A1 : NULL;
+    // lseg(X, null)
+    x1.next = nondet_bool() ? SEL_X : NULL;
+    x3.next = nondet_bool() ? SEL_X : NULL;
+    x3.next = nondet_bool() ? SEL_X : NULL;
+    x4.next = nondet_bool() ? SEL_X : NULL;
+    x5.next = nondet_bool() ? SEL_X : NULL;
+    x6.next = nondet_bool() ? SEL_X : NULL;
+    x7.next = nondet_bool() ? SEL_X : NULL;
   }
 
   // build second list
-  list_t *y = SEL_A2;
+  list_t *y = SEL_Y;
   {
-    a21.next = nondet_bool() ? SEL_A2 : NULL;
-    a23.next = nondet_bool() ? SEL_A2 : NULL;
-    a23.next = nondet_bool() ? SEL_A2 : NULL;
-    a24.next = nondet_bool() ? SEL_A2 : NULL;
+    // lseg(Y, null)
+    // forall a: Y, a.next == &Y || a.next == NULL
+    y1.next = nondet_bool() ? SEL_Y : NULL;
+    y3.next = nondet_bool() ? SEL_Y : NULL;
+    y3.next = nondet_bool() ? SEL_Y : NULL;
+    y4.next = nondet_bool() ? SEL_Y : NULL;
   }
 
   list_append(x, y);
 
   // check post lseg(y, null)
-  {
-    list_t *current = y;
-    size_t i = 0;
-    bool ok = true;
-    while(i < SIZE_A2) {
-      if(current == NULL) {
-        break;
-      }
-      if(!INC_A2(current)) {
-        ok = false;
-        break;
-      }
-      current = current->next;
-      i++;
-    }
-    assert(ok);
-  }
+  assert(INC_Y(y));
+  assert(INC_Y(y->next) || y->next == NULL);
+  __CPROVER_assert(y->next != NULL, "FAILURE");
+
 
   // check post lseg(x, y)
-  {
-    list_t *current = x;
-    size_t i = 0;
-    bool ok = true;
-    while(i < SIZE_A1) {
-      if(current == y) {
-        break;
-      }
-      if(!INC_A1(current)) {
-        ok = false;
-        break;
-      }
-      current = current->next;
-      i++;
-    }
-    assert(ok);
-  }
+  assert(INC_X(x));
+  assert(INC_X(x->next) || INC_Y(x->next));
   return 0;
 }
