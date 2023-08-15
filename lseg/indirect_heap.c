@@ -55,17 +55,15 @@ void *__summon() {
   return proxy;
 }
 
-// rebases a prox pointer into a pointer to real object
-void *__rebase(void *proxy_x) {
-  __CPROVER_precondition(
-      proxy_x ==> __is_proxy[__CPROVER_POINTER_OBJECT(proxy_x)], "x is proxy");
-  __CPROVER_precondition(
-      proxy_x ==> __has_real_obj[__CPROVER_POINTER_OBJECT(proxy_x)],
-      "x has real");
-  if (!proxy_x)
-    return NULL;
-  return __real_obj[__CPROVER_POINTER_OBJECT(proxy_x)] +
-         __CPROVER_POINTER_OFFSET(proxy_x);
+// rebases a non-null prox pointer into a pointer to real object
+void *__rebase(void *ptr) {
+  __CPROVER_precondition(ptr, "rebased pointer not null");
+  __CPROVER_precondition(__is_proxy[__CPROVER_POINTER_OBJECT(ptr)],
+                         "x is proxy");
+  __CPROVER_precondition(__has_real_obj[__CPROVER_POINTER_OBJECT(ptr)],
+                         "x has real");
+  return __real_obj[__CPROVER_POINTER_OBJECT(ptr)] +
+         __CPROVER_POINTER_OFFSET(ptr);
 }
 
 void *__lift(void *real) {
@@ -117,12 +115,47 @@ typedef struct {
   void *y;
 } __lseg_t;
 
-// __lseg[i] holds the assumption thunk about proxy object `i`
+// initialise assumptions map
+void __lseg_init();
+
+// gets the assumption for x
+__lseg_t __get_lseg(list_t *x);
+
+// sets an assumption for x
+void __set_lseg(list_t *x, __lseg_t a);
+
+#ifdef SHADOW_MAP
+// byte level assumption map (blows up)
+#include "shadow_map.h"
+shadow_map_t __lseg;
+void __lseg_init() {
+  // store a shadow __lseg_t struct for each pointer
+  shadow_map_init(&__lseg, sizeof(__lseg_t));
+}
+
+__lseg_t __get_lseg(list_t *x) { return *((__lseg_t *)shadow_map_get(&__lseg, x)); }
+
+void __set_lseg(list_t *x, __lseg_t a) {
+  *((__lseg_t *)shadow_map_get(&__lseg, x)) = a;
+}
+
+#else
+// object level assumption map (will not work for list nodes embedded in structs
+// alongside other members).
 __lseg_t *__lseg;
+
 void __lseg_init() {
   __lseg = __CPROVER_allocate(__CPROVER_max_symex_objects * sizeof(*__lseg), 1);
   __CPROVER_array_set(__lseg, (__lseg_t){.x = NULL, .y = NULL});
 }
+
+__lseg_t __get_lseg(list_t *x) {
+  return __lseg[__CPROVER_POINTER_OBJECT(x)];
+}
+void __set_lseg(list_t *x, __lseg_t a) {
+  __lseg[__CPROVER_POINTER_OBJECT(x)] = a;
+}
+#endif
 
 // posts an lseg(x, y) assumption
 void __assume_lseg(list_t *proxy_x, list_t *proxy_y) {
@@ -133,7 +166,7 @@ void __assume_lseg(list_t *proxy_x, list_t *proxy_y) {
   size_t id = __CPROVER_POINTER_OBJECT(proxy_x);
   __has_real_obj[id] = false;
   __real_obj[id] = NULL;
-  __lseg[id] = (__lseg_t){.x = proxy_x, .y = proxy_y};
+  __set_lseg(proxy_x, (__lseg_t){.x = proxy_x, .y = proxy_y});
 }
 
 // unwinds the predicate definition for k steps, emits an assumption at k == 0
@@ -146,7 +179,7 @@ void __unwind_lseg_rec(list_t *proxy_x, list_t *proxy_y, size_t k) {
     list_t *real = malloc(sizeof(list_t));
     __has_real_obj[proxy_id] = true;
     __real_obj[proxy_id] = real;
-    __lseg[proxy_id] = (__lseg_t){.x = NULL, .y = NULL};
+    __set_lseg(proxy_x, (__lseg_t){.x = NULL, .y = NULL});
     if (nondet_int()) {
       // the terminal case
       real->next = proxy_y;
@@ -165,8 +198,7 @@ void __unwind_lseg(list_t *proxy_x, list_t *proxy_y, size_t k) {
   __CPROVER_precondition(
       proxy_y ==> __is_proxy[__CPROVER_POINTER_OBJECT(proxy_x)], "y is proxy");
   __CPROVER_precondition(
-      __lseg[__CPROVER_POINTER_OBJECT(proxy_x)].x == proxy_x &&
-          __lseg[__CPROVER_POINTER_OBJECT(proxy_x)].y == proxy_y,
+      __get_lseg(proxy_x).x == proxy_x && __get_lseg(proxy_x).y == proxy_y,
       "lseg(x, y) assumption found");
   __unwind_lseg_rec(proxy_x, proxy_y, k);
 }
@@ -191,7 +223,7 @@ bool __eval_lseg(list_t *proxy_x, list_t *proxy_y, size_t k) {
     return __eval_lseg(real_x->next, proxy_y, k - 1);
   } else {
     // look for an assumption
-    __lseg_t a = __lseg[__CPROVER_POINTER_OBJECT(proxy_x)];
+    __lseg_t a = __get_lseg(proxy_x);
     // the assumption is for a pointer with different offset, fail
     if (a.x != proxy_x)
       return false;
@@ -212,15 +244,28 @@ void list_append(list_t *x, list_t *y) {
     return;
   }
 
+  list_t *second =((list_t *)__rebase(((list_t *)__rebase(x))->next))->next;
   list_t *tail = ((list_t *)__rebase(x))->next;
 
   // loop invariant base case
-  __CPROVER_assert(__eval_lseg(x, tail, 1), "lseg(x, tail) base case");
-  __CPROVER_assert(__eval_lseg(tail, NULL, 1), "lseg(tail, null) base case");
-  // unwind tail assumption
-  __unwind_lseg(tail, NULL, 1);
+  __CPROVER_assert(__eval_lseg(x, tail, 3), "lseg(x, tail) base case");
+  __CPROVER_assert(__eval_lseg(tail, NULL, 3), "lseg(tail, null) base case");
 
-  // loopback update for loop step
+  // use the points to information to generate a nondet pointer
+  // VS(tail) = { x, x->next, x->next->next, second, X }
+
+  if (nondet_int()) {
+    tail = x;
+  }
+
+  if(nondet_int()) {
+    tail = ((list_t *)__rebase(x))->next;
+  }
+
+  if(nondet_int()) {
+    tail = ((list_t *)__rebase(((list_t *)__rebase(x))->next))->next;
+  }
+
   if (nondet_int()) {
     tail = __summon();
     __assume_lseg(x, tail);
@@ -228,6 +273,8 @@ void list_append(list_t *x, list_t *y) {
     __assume_lseg(tail, NULL);
     __unwind_lseg(tail, NULL, 1);
   }
+
+  __CPROVER_assume(tail);
 
   if (((list_t *)__rebase(tail))->next != NULL) {
 #ifdef BUG3
@@ -240,7 +287,15 @@ void list_append(list_t *x, list_t *y) {
     if(nondet_int())
       tail = y;
 #endif
+
+#ifdef BUG5
+    if(tail == second) {
+      __CPROVER_assert(false, "bug5");
+    }
+#endif
+
     // instrument step
+    __CPROVER_assert(tail, "step case");
     __CPROVER_assert(__eval_lseg(x, tail, 3), "lseg(x, tail) step case");
     __CPROVER_assert(__eval_lseg(tail, NULL, 3), "lseg(tail, null) step case");
     __CPROVER_assume(false);
@@ -265,7 +320,7 @@ int main() {
   // preconditions
   list_t *x = __summon();
   __assume_lseg(x, NULL);
-  __unwind_lseg(x, NULL, 1);
+  __unwind_lseg(x, NULL, 3);
 
   list_t *y = __summon();
   __assume_lseg(y, NULL);
@@ -274,7 +329,7 @@ int main() {
   // call function
   list_append(x, y);
 
-  // postconditions
+  // // postconditions
   assert(__eval_lseg(x, y, 3));
   assert(__eval_lseg(y, NULL, 3));
   return 0;
